@@ -50,4 +50,51 @@ readonly class EventsRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return (int)($result['count'] ?? 0);
     }
+
+    /**
+     * Gets daily statistics aggregated by date
+     *
+     * @param string|null $dateFrom Start date in Y-m-d format
+     * @param string|null $dateTo End date in Y-m-d format
+     * @return array<int, array{date: string, total_events: int, clicks: int, impressions: int}>
+     */
+    public function getDailyStats(?string $dateFrom = null, ?string $dateTo = null): array
+    {
+        $sql = "
+            SELECT 
+                date,
+                SUM(count) as total_events,
+                SUM(CASE WHEN action = 'click' THEN count ELSE 0 END) as clicks,
+                SUM(CASE WHEN action = 'impression' THEN count ELSE 0 END) as impressions
+            FROM events_agg_daily
+            WHERE 1=1
+        ";
+
+        $params = [];
+
+        if ($dateFrom !== null) {
+            $sql .= " AND date >= ?";
+            $params[] = $dateFrom;
+        }
+
+        if ($dateTo !== null) {
+            $sql .= " AND date <= ?";
+            $params[] = $dateTo;
+        }
+
+        $sql .= " GROUP BY date ORDER BY date ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(function (array $row): array {
+            return [
+                'date' => $row['date'],
+                'total_events' => (int)$row['total_events'],
+                'clicks' => (int)$row['clicks'],
+                'impressions' => (int)$row['impressions'],
+            ];
+        }, $results);
+    }
 }

@@ -139,6 +139,90 @@ X-Idempotency-Key: optional-key
 - `impression` — показ рекламы
 - Любые другие действия (сохраняются в MongoDB)
 
+### Campaign Report
+```http
+GET /v1/reports/campaigns/{campaignId}?date_from=2024-11-01&date_to=2024-11-19
+```
+
+**Response (200 OK):**
+```json
+{
+  "campaign_id": "campaign123",
+  "period": {
+    "from": "2024-11-01",
+    "to": "2024-11-19"
+  },
+  "stats": {
+    "clicks": 1250,
+    "impressions": 5000,
+    "unique_users": 850,
+    "ctr": 0.25
+  },
+  "daily": [
+    {
+      "date": "2024-11-01",
+      "clicks": 100,
+      "impressions": 400,
+      "unique_users": 80
+    }
+  ]
+}
+```
+
+### All Campaigns Report
+```http
+GET /v1/reports/campaigns?date_from=2024-11-01&date_to=2024-11-19
+```
+
+**Response (200 OK):**
+```json
+{
+  "period": {
+    "from": "2024-11-01",
+    "to": "2024-11-19"
+  },
+  "campaigns": [
+    {
+      "campaign_id": "campaign123",
+      "clicks": 1250,
+      "impressions": 5000,
+      "unique_users": 850,
+      "ctr": 0.25
+    }
+  ],
+  "total": {
+    "clicks": 5000,
+    "impressions": 20000,
+    "unique_users": 3000
+  }
+}
+```
+
+### Daily Report
+```http
+GET /v1/reports/daily?date_from=2024-11-01&date_to=2024-11-19
+```
+
+**Response (200 OK):**
+```json
+{
+  "period": {
+    "from": "2024-11-01",
+    "to": "2024-11-19"
+  },
+  "daily": [
+    {
+      "date": "2024-11-01",
+      "total_events": 1500,
+      "clicks": 500,
+      "impressions": 2000
+    }
+  ]
+}
+```
+
+**Примечание:** Все отчёты кэшируются в Redis на 5 минут (настраивается через `CACHE_TTL` в `.env`)
+
 ## 🗄️ База данных
 
 ### MySQL таблицы:
@@ -243,7 +327,7 @@ docker compose logs -f worker
 
 ## 📝 TODO
 
-- [ ] API для получения отчётов (с кэшированием в Redis)
+- [x] API для получения отчётов (с кэшированием в Redis)
 - [ ] Метрики и мониторинг
 - [ ] Тесты
 - [ ] Frontend (SvelteKit + TypeScript)

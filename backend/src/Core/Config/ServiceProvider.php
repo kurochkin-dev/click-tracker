@@ -6,6 +6,9 @@ namespace App\Core\Config;
 
 use App\Domain\Events\EventIngestService;
 use App\Domain\Events\EventValidator;
+use App\Domain\Reports\ReportsService;
+use App\Domain\Campaigns\CampaignStatsRepository;
+use App\Domain\Events\EventsRepository;
 use Psr\Container\ContainerInterface;
 use MongoDB\Client as MongoClient;
 use Redis;
@@ -44,6 +47,15 @@ class ServiceProvider
                     $c->get(EventValidator::class),
                     $c->get('streams.ingest'),
                     $c->get('streams.maxlen')
+                );
+            }),
+
+            ReportsService::class => factory(function (ContainerInterface $c): ReportsService {
+                return new ReportsService(
+                    $c->get(CampaignStatsRepository::class),
+                    $c->get(EventsRepository::class),
+                    $c->get(\Redis::class),
+                    $c->get('cache.ttl')
                 );
             }),
         ];

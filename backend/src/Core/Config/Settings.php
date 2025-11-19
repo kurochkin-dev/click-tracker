@@ -44,6 +44,8 @@ class Settings
 
             'streams.ingest' => getenv('INGEST_STREAM') ?: 'events:ingest',
             'streams.maxlen' => (int)(getenv('INGEST_MAXLEN') ?: 100000),
+
+            'cache.ttl' => (int)(getenv('CACHE_TTL') ?: 300), // 5 minutes default
         ];
     }
 }
