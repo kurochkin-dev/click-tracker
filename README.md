@@ -5,6 +5,7 @@
 ## 🚀 Технологии
 
 - **Backend**: PHP 8.3, Slim Framework 4
+- **Frontend**: SvelteKit, TypeScript, Chart.js
 - **Databases**: MySQL 8.0 (агрегаты), MongoDB 6 (сырые события с TTL)
 - **Cache/Queue**: Redis 7 (Streams для очереди, кэш для отчётов)
 - **Containerization**: Docker Compose
@@ -325,12 +326,36 @@ docker compose logs -f worker
 - **MongoDB**: `localhost:27017` или через Mongo Express `http://localhost:8081`
 - **Redis**: `localhost:6379`
 
+## 🎨 Frontend
+
+Frontend приложение на SvelteKit + TypeScript для визуализации аналитики.
+
+### Запуск:
+
+```bash
+cd frontend
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Приложение будет доступно на `http://localhost:3000`
+
+### Функциональность:
+
+- 📊 Дашборд с общей статистикой
+- 📈 Графики ежедневной статистики (Chart.js)
+- 🎯 Список всех кампаний с метриками
+- 📅 Фильтрация по диапазону дат
+- 💳 Карточки кампаний с CTR, кликами, показами
+
+Подробнее см. [frontend/README.md](frontend/README.md)
+
 ## 📝 TODO
 
 - [x] API для получения отчётов (с кэшированием в Redis)
+- [x] Frontend (SvelteKit + TypeScript)
 - [ ] Метрики и мониторинг
 - [ ] Тесты
-- [ ] Frontend (SvelteKit + TypeScript)
 
 ## 📄 Лицензия
 
