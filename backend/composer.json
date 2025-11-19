@@ -1,0 +1,21 @@
+{
+  "name": "click-tracker/backend",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "slim/slim": "^4.12",
+    "slim/psr7": "^1.6",
+    "vlucas/phpdotenv": "^5.6",
+    "ext-redis": "*",
+    "ext-pdo": "*",
+    "php-di/php-di": "^7",
+    "php-di/slim-bridge": "^3",
+    "mongodb/mongodb": "2.1.2",
+    "ext-mongodb": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}

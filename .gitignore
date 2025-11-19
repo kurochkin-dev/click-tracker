@@ -1,0 +1,65 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Composer
+backend/vendor/
+composer.phar
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.phpstorm.meta.php
+
+# Logs
+*.log
+logs/
+backend/logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+.cache/
+
+# Docker volumes (if any)
+mysql_data/
+redis_data/
+mongo_data/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Node.js (if frontend will be added)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+
+# Test coverage
+coverage/
+.nyc_output/
+phpunit.xml
+
+# Backup files
+*.bak
+*.backup
+*~
+
