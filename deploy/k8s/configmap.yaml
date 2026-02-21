@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: click-tracker-config
+  namespace: click-tracker
+  labels:
+    app.kubernetes.io/name: click-tracker
+data:
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  MONGO_HOST: "mongo"
+  MONGO_PORT: "27017"
+  MONGO_DB: "clicktracker"
+  INGEST_STREAM: "events:ingest"
+  INGEST_MAXLEN: "100000"
+  CACHE_TTL: "300"
+  TZ: "UTC"

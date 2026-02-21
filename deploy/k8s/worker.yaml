@@ -1,0 +1,53 @@
+# Worker Deployment (агрегация событий из Redis Streams)
+#
+# Worker — одиночный под (replicas: 1), так как агрегация в MySQL должна
+# выполняться последовательно. При масштабировании необходима распределённая
+# блокировка (Redis Lock) — это следующий шаг оптимизации.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: click-tracker
+  labels:
+    app.kubernetes.io/name: click-tracker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  strategy:
+    # Recreate гарантирует что старый под останавливается до запуска нового
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: worker
+        app.kubernetes.io/component: worker
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: worker
+          # Замените image на ваш registry:
+          # image: registry.example.com/click-tracker/php-fpm:latest
+          image: click-tracker-php-fpm:latest
+          imagePullPolicy: IfNotPresent
+          command: ["php", "/var/www/backend/bin/worker.php"]
+          envFrom:
+            - configMapRef:
+                name: click-tracker-config
+            - secretRef:
+                name: click-tracker-secret
+          livenessProbe:
+            exec:
+              command: ["php", "-r", "echo 'ok';"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi

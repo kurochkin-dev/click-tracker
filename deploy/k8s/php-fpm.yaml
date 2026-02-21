@@ -1,0 +1,71 @@
+# php-fpm Deployment + Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-fpm
+  namespace: click-tracker
+  labels:
+    app.kubernetes.io/name: click-tracker
+    app.kubernetes.io/component: php-fpm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: php-fpm
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: php-fpm
+        app.kubernetes.io/component: php-fpm
+    spec:
+      containers:
+        - name: php-fpm
+          # Замените image на ваш registry:
+          # image: registry.example.com/click-tracker/php-fpm:latest
+          image: click-tracker-php-fpm:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: click-tracker-config
+            - secretRef:
+                name: click-tracker-secret
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-fpm
+  namespace: click-tracker
+  labels:
+    app.kubernetes.io/component: php-fpm
+spec:
+  selector:
+    app: php-fpm
+  ports:
+    - port: 9000
+      targetPort: 9000
