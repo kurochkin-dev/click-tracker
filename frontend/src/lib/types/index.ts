@@ -1,46 +1,57 @@
-export interface CampaignStats {
-  campaign_id: string;
-  clicks: number;
-  impressions: number;
+// Метрики одного объявления
+export interface GoodStats {
+  good_id: string;
+  good_views: number;
+  contact_reveals: number;
+  profile_views: number;
+  message_sends: number;
   unique_users: number;
-  ctr: number;
 }
 
-export interface CampaignDailyStats {
+// Суточная разбивка для одного объявления
+export interface GoodDailyStats {
   date: string;
-  clicks: number;
-  impressions: number;
+  good_views: number;
+  contact_reveals: number;
+  profile_views: number;
+  message_sends: number;
   unique_users: number;
 }
 
-export interface CampaignReport {
-  campaign_id: string;
+// Детальный отчёт по одному объявлению
+export interface GoodReport {
+  good_id: string;
   period: {
     from: string | null;
     to: string | null;
   };
-  stats: CampaignStats;
-  daily: CampaignDailyStats[];
+  stats: GoodStats;
+  daily: GoodDailyStats[];
 }
 
-export interface AllCampaignsReport {
+// Сводный отчёт по всем объявлениям
+export interface AllGoodsReport {
   period: {
     from: string | null;
     to: string | null;
   };
-  campaigns: CampaignStats[];
+  goods: GoodStats[];
   total: {
-    clicks: number;
-    impressions: number;
-    unique_users: number;
+    good_views: number;
+    contact_reveals: number;
+    profile_views: number;
+    message_sends: number;
   };
 }
 
+// Суточная статистика
 export interface DailyStats {
   date: string;
   total_events: number;
-  clicks: number;
-  impressions: number;
+  good_views: number;
+  contact_reveals: number;
+  profile_views: number;
+  message_sends: number;
 }
 
 export interface DailyReport {
@@ -51,7 +62,22 @@ export interface DailyReport {
   daily: DailyStats[];
 }
 
+// Гео-запись
+export interface GeoEntry {
+  country: string | null;
+  city: string | null;
+  events: number;
+}
+
+export interface GeoReport {
+  period: {
+    from: string | null;
+    to: string | null;
+  };
+  action: string | null;
+  geo: GeoEntry[];
+}
+
 export interface ApiError {
   error: string;
 }
-

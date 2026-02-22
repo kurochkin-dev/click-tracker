@@ -2,17 +2,19 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { apiClient } from '$lib/api/client';
-  import type { AllCampaignsReport, DailyReport } from '$lib/types';
+  import type { AllGoodsReport, DailyReport, GeoReport } from '$lib/types';
   import { getDefaultDateRange } from '$lib/utils/date';
   import DateRangePicker from '../lib/components/DateRangePicker.svelte';
-  import CampaignList from '../lib/components/CampaignList.svelte';
+  import GoodList from '../lib/components/GoodList.svelte';
+  import GeoChart from '../lib/components/GeoChart.svelte';
   import StatsChart from '../lib/components/StatsChart.svelte';
   import LoadingSpinner from '../lib/components/LoadingSpinner.svelte';
 
   let loading = true;
   let error: string | null = null;
-  let campaignsReport: AllCampaignsReport | null = null;
+  let goodsReport: AllGoodsReport | null = null;
   let dailyReport: DailyReport | null = null;
+  let geoReport: GeoReport | null = null;
 
   const defaultRange = getDefaultDateRange();
   let dateFrom: string | null = defaultRange.from;
@@ -21,18 +23,16 @@
 
   async function loadData() {
     if (!browser || !isMounted) return;
-
     loading = true;
     error = null;
-
     try {
-      [campaignsReport, dailyReport] = await Promise.all([
-        apiClient.getAllCampaignsReport(dateFrom, dateTo),
-        apiClient.getDailyReport(dateFrom, dateTo)
+      [goodsReport, dailyReport, geoReport] = await Promise.all([
+        apiClient.getAllGoodsReport(dateFrom, dateTo),
+        apiClient.getDailyReport(dateFrom, dateTo),
+        apiClient.getGeoReport(dateFrom, dateTo)
       ]);
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load data';
-      console.error('Error loading data:', e);
     } finally {
       loading = false;
     }
@@ -49,12 +49,15 @@
 </script>
 
 <svelte:head>
-  <title>Click Tracker - Dashboard</title>
+  <title>Analytics Dashboard</title>
 </svelte:head>
 
 <div class="dashboard">
   <div class="dashboard-header">
-    <h2>Dashboard</h2>
+    <div class="header-left">
+      <h2>📊 Analytics Dashboard</h2>
+      <span class="header-sub">Аналитика объявлений и контактов</span>
+    </div>
     <DateRangePicker bind:dateFrom bind:dateTo />
   </div>
 
@@ -62,47 +65,59 @@
     <LoadingSpinner />
   {:else if error}
     <div class="error-message">
-      <p>Error: {error}</p>
-      <button on:click={loadData} class="retry-button">Retry</button>
+      <p>Ошибка: {error}</p>
+      <button on:click={loadData} class="retry-button">Повторить</button>
     </div>
-  {:else}
-    {#if campaignsReport && dailyReport}
-      <div class="dashboard-content">
-        <div class="stats-section">
-          <h3>Total Statistics</h3>
-          <div class="total-stats">
-            <div class="total-stat-item">
-              <span class="total-stat-label">Total Clicks</span>
-              <span class="total-stat-value">{campaignsReport.total.clicks.toLocaleString()}</span>
-            </div>
-            <div class="total-stat-item">
-              <span class="total-stat-label">Total Impressions</span>
-              <span class="total-stat-value">
-                {campaignsReport.total.impressions.toLocaleString()}
-              </span>
-            </div>
-            <div class="total-stat-item">
-              <span class="total-stat-label">Unique Users</span>
-              <span class="total-stat-value">
-                {campaignsReport.total.unique_users.toLocaleString()}
-              </span>
-            </div>
+  {:else if goodsReport && dailyReport}
+    <div class="dashboard-content">
+      <!-- Общая статистика -->
+      <div class="stats-section">
+        <h3>Итого за период</h3>
+        <div class="total-stats">
+          <div class="total-stat-item">
+            <span class="total-stat-label">Просмотры товаров</span>
+            <span class="total-stat-value">{goodsReport.total.good_views.toLocaleString()}</span>
           </div>
-        </div>
-
-        <div class="chart-section">
-          <h3>Daily Statistics</h3>
-          <div class="chart-wrapper">
-            <StatsChart data={dailyReport.daily} type="line" title="Daily Events" />
+          <div class="total-stat-item highlight">
+            <span class="total-stat-label">Раскрытий контактов</span>
+            <span class="total-stat-value"
+              >{goodsReport.total.contact_reveals.toLocaleString()}</span
+            >
           </div>
-        </div>
-
-        <div class="campaigns-section">
-          <h3>Campaigns ({campaignsReport.campaigns.length})</h3>
-          <CampaignList campaigns={campaignsReport.campaigns} />
+          <div class="total-stat-item">
+            <span class="total-stat-label">Просмотры профилей</span>
+            <span class="total-stat-value">{goodsReport.total.profile_views.toLocaleString()}</span>
+          </div>
+          <div class="total-stat-item">
+            <span class="total-stat-label">Сообщений отправлено</span>
+            <span class="total-stat-value">{goodsReport.total.message_sends.toLocaleString()}</span>
+          </div>
         </div>
       </div>
-    {/if}
+
+      <!-- График активности -->
+      <div class="chart-section">
+        <h3>Активность по дням</h3>
+        <div class="chart-wrapper">
+          <StatsChart data={dailyReport.daily} type="line" title="Суточные события" />
+        </div>
+      </div>
+
+      <!-- Гео + товары -->
+      <div class="two-col">
+        {#if geoReport}
+          <div class="card">
+            <h3>🌍 География</h3>
+            <GeoChart geo={geoReport.geo} />
+          </div>
+        {/if}
+
+        <div class="card">
+          <h3>📦 Объявления ({goodsReport.goods.length})</h3>
+          <GoodList goods={goodsReport.goods} />
+        </div>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -113,17 +128,29 @@
 
   .dashboard-header {
     background: white;
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem;
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
-  .dashboard-header h2 {
-    margin: 0 0 1rem 0;
+  .header-left h2 {
+    margin: 0;
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 700;
     color: #111827;
+  }
+
+  .header-sub {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    display: block;
+    margin-top: 0.2rem;
   }
 
   .dashboard-content {
@@ -134,7 +161,7 @@
 
   .stats-section,
   .chart-section,
-  .campaigns-section {
+  .card {
     background: white;
     padding: 1.5rem;
     border-radius: 0.5rem;
@@ -143,43 +170,65 @@
 
   .stats-section h3,
   .chart-section h3,
-  .campaigns-section h3 {
+  .card h3 {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
-    color: #111827;
+    color: #374151;
   }
 
   .total-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
   }
 
   .total-stat-item {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
     padding: 1rem;
     background: #f9fafb;
     border-radius: 0.375rem;
+    border: 1px solid #f3f4f6;
+  }
+
+  .total-stat-item.highlight {
+    background: #fffbeb;
+    border-color: #fcd34d;
   }
 
   .total-stat-label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .total-stat-value {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: #111827;
   }
 
+  .total-stat-item.highlight .total-stat-value {
+    color: #d97706;
+  }
+
   .chart-wrapper {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .two-col {
+      grid-template-columns: 1fr;
+    }
   }
 
   .error-message {
@@ -200,11 +249,9 @@
     border-radius: 0.375rem;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.2s;
   }
 
   .retry-button:hover {
     background: #2563eb;
   }
 </style>
-

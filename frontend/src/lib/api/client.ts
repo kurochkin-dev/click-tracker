@@ -1,24 +1,13 @@
-import type {
-  CampaignReport,
-  AllCampaignsReport,
-  DailyReport,
-  ApiError
-} from '../types';
+import type { GoodReport, AllGoodsReport, DailyReport, GeoReport, ApiError } from '../types';
 
 const API_BASE_URL = '/api';
 
 class ApiClient {
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
+      headers: { 'Content-Type': 'application/json', ...options.headers }
     });
 
     if (!response.ok) {
@@ -31,49 +20,35 @@ class ApiClient {
     return response.json();
   }
 
-  async getCampaignReport(
-    campaignId: string,
-    dateFrom?: string | null,
-    dateTo?: string | null
-  ): Promise<CampaignReport> {
+  private buildQuery(dateFrom?: string | null, dateTo?: string | null, extra?: Record<string, string>): string {
     const params = new URLSearchParams();
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
-
-    const query = params.toString();
-    return this.request<CampaignReport>(
-      `/v1/reports/campaigns/${campaignId}${query ? `?${query}` : ''}`
-    );
+    if (extra) Object.entries(extra).forEach(([k, v]) => params.append(k, v));
+    const q = params.toString();
+    return q ? `?${q}` : '';
   }
 
-  async getAllCampaignsReport(
-    dateFrom?: string | null,
-    dateTo?: string | null
-  ): Promise<AllCampaignsReport> {
-    const params = new URLSearchParams();
-    if (dateFrom) params.append('date_from', dateFrom);
-    if (dateTo) params.append('date_to', dateTo);
-
-    const query = params.toString();
-    return this.request<AllCampaignsReport>(
-      `/v1/reports/campaigns${query ? `?${query}` : ''}`
-    );
+  async getGoodReport(goodId: string, dateFrom?: string | null, dateTo?: string | null): Promise<GoodReport> {
+    return this.request<GoodReport>(`/v1/reports/goods/${goodId}${this.buildQuery(dateFrom, dateTo)}`);
   }
 
-  async getDailyReport(
-    dateFrom?: string | null,
-    dateTo?: string | null
-  ): Promise<DailyReport> {
-    const params = new URLSearchParams();
-    if (dateFrom) params.append('date_from', dateFrom);
-    if (dateTo) params.append('date_to', dateTo);
+  async getAllGoodsReport(dateFrom?: string | null, dateTo?: string | null): Promise<AllGoodsReport> {
+    return this.request<AllGoodsReport>(`/v1/reports/goods${this.buildQuery(dateFrom, dateTo)}`);
+  }
 
-    const query = params.toString();
-    return this.request<DailyReport>(
-      `/v1/reports/daily${query ? `?${query}` : ''}`
-    );
+  async getDailyReport(dateFrom?: string | null, dateTo?: string | null): Promise<DailyReport> {
+    return this.request<DailyReport>(`/v1/reports/daily${this.buildQuery(dateFrom, dateTo)}`);
+  }
+
+  async getGeoReport(
+    dateFrom?: string | null,
+    dateTo?: string | null,
+    action?: string | null
+  ): Promise<GeoReport> {
+    const extra = action ? { action } : undefined;
+    return this.request<GeoReport>(`/v1/reports/geo${this.buildQuery(dateFrom, dateTo, extra)}`);
   }
 }
 
 export const apiClient = new ApiClient();
-

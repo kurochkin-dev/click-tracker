@@ -7,7 +7,7 @@ namespace App\Core\Config;
 use App\Domain\Events\EventIngestService;
 use App\Domain\Events\EventValidator;
 use App\Domain\Reports\ReportsService;
-use App\Domain\Campaigns\CampaignStatsRepository;
+use App\Domain\Goods\GoodStatsRepository;
 use App\Domain\Events\EventsRepository;
 use Psr\Container\ContainerInterface;
 use MongoDB\Client as MongoClient;
@@ -52,7 +52,7 @@ class ServiceProvider
 
             ReportsService::class => factory(function (ContainerInterface $c): ReportsService {
                 return new ReportsService(
-                    $c->get(CampaignStatsRepository::class),
+                    $c->get(GoodStatsRepository::class),
                     $c->get(EventsRepository::class),
                     $c->get(\Redis::class),
                     $c->get('cache.ttl')
