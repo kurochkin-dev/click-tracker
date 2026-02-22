@@ -4,71 +4,56 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports;
 
-use App\Domain\Campaigns\CampaignStatsRepository;
+use App\Domain\Goods\GoodStatsRepository;
 use App\Domain\Events\EventsRepository;
 use Redis;
 
+/**
+ * Сервис формирования аналитических отчётов.
+ * Все отчёты кешируются в Redis.
+ */
 readonly class ReportsService
 {
     public function __construct(
-        private CampaignStatsRepository $campaignStatsRepository,
-        private EventsRepository        $eventsRepository,
-        private Redis                   $redis,
-        private int                     $cacheTtl
+        private GoodStatsRepository $goodStatsRepository,
+        private EventsRepository    $eventsRepository,
+        private Redis               $redis,
+        private int                 $cacheTtl
     ) {
     }
 
     /**
-     * Gets campaign report with caching
+     * Возвращает отчёт по конкретному объявлению с кешированием.
      *
-     * @param string $campaignId Campaign ID
-     * @param string|null $dateFrom Start date in Y-m-d format
-     * @param string|null $dateTo End date in Y-m-d format
-     * @return array{campaign_id: string, period: array{from: string|null, to: string|null}, stats: array{clicks: int, impressions: int, unique_users: int, ctr: float}, daily: array<int, array{date: string, clicks: int, impressions: int, unique_users: int}>}
+     * @param string      $goodId   ID объявления
+     * @param string|null $dateFrom Начальная дата в формате Y-m-d
+     * @param string|null $dateTo   Конечная дата в формате Y-m-d
+     * @return array{good_id: string, period: array{from: string|null, to: string|null}, stats: array{good_views: int, contact_reveals: int, profile_views: int, message_sends: int, unique_users: int}, daily: array<int, array{date: string, good_views: int, contact_reveals: int, profile_views: int, message_sends: int, unique_users: int}>} Отчёт по объявлению
      */
-    public function getCampaignReport(string $campaignId, ?string $dateFrom = null, ?string $dateTo = null): array
+    public function getGoodReport(string $goodId, ?string $dateFrom = null, ?string $dateTo = null): array
     {
-        $cacheKey = $this->buildCacheKey('campaign', $campaignId, $dateFrom, $dateTo);
-        $cached = $this->getFromCache($cacheKey);
+        $cacheKey = $this->buildCacheKey('good', $goodId, $dateFrom, $dateTo);
+        $cached   = $this->getFromCache($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
 
-        $dailyStats = $this->campaignStatsRepository->getCampaignStats($campaignId, $dateFrom, $dateTo);
+        $dailyStats = $this->goodStatsRepository->getGoodStats($goodId, $dateFrom, $dateTo);
 
-        $totalClicks = 0;
-        $totalImpressions = 0;
-        $maxUniqueUsers = 0;
-
-        $daily = [];
+        $totals = ['good_views' => 0, 'contact_reveals' => 0, 'profile_views' => 0, 'message_sends' => 0, 'unique_users' => 0];
         foreach ($dailyStats as $stat) {
-            $totalClicks += $stat['clicks'];
-            $totalImpressions += $stat['impressions'];
-            $maxUniqueUsers = max($maxUniqueUsers, $stat['unique_users']);
-
-            $daily[] = [
-                'date' => $stat['date'],
-                'clicks' => $stat['clicks'],
-                'impressions' => $stat['impressions'],
-                'unique_users' => $stat['unique_users'],
-            ];
+            $totals['good_views']      += $stat['good_views'];
+            $totals['contact_reveals'] += $stat['contact_reveals'];
+            $totals['profile_views']   += $stat['profile_views'];
+            $totals['message_sends']   += $stat['message_sends'];
+            $totals['unique_users']     = max($totals['unique_users'], $stat['unique_users']);
         }
 
-        $ctr = $totalImpressions > 0 ? round($totalClicks / $totalImpressions, 4) : 0.0;
-
         $report = [
-            'campaign_id' => $campaignId,
-            'period' => [
-                'from' => $dateFrom,
-                'to' => $dateTo,
-            ],
-            'stats' => [
-                'clicks' => $totalClicks,
-                'impressions' => $totalImpressions,
-                'unique_users' => $maxUniqueUsers,
-                'ctr' => $ctr,
-            ],
-            'daily' => $daily,
+            'good_id' => $goodId,
+            'period'  => ['from' => $dateFrom, 'to' => $dateTo],
+            'stats'   => $totals,
+            'daily'   => $dailyStats,
         ];
 
         $this->setCache($cacheKey, $report);
@@ -76,54 +61,34 @@ readonly class ReportsService
     }
 
     /**
-     * Gets all campaigns report with caching
+     * Возвращает сводный отчёт по всем объявлениям с кешированием.
      *
-     * @param string|null $dateFrom Start date in Y-m-d format
-     * @param string|null $dateTo End date in Y-m-d format
-     * @return array{period: array{from: string|null, to: string|null}, campaigns: array<int, array{campaign_id: string, clicks: int, impressions: int, unique_users: int, ctr: float}>, total: array{clicks: int, impressions: int, unique_users: int}}
+     * @param string|null $dateFrom Начальная дата в формате Y-m-d
+     * @param string|null $dateTo   Конечная дата в формате Y-m-d
+     * @return array{period: array{from: string|null, to: string|null}, goods: array<int, array{good_id: string, good_views: int, contact_reveals: int, profile_views: int, message_sends: int, unique_users: int}>, total: array{good_views: int, contact_reveals: int, profile_views: int, message_sends: int}} Сводный отчёт по всем объявлениям
      */
-    public function getAllCampaignsReport(?string $dateFrom = null, ?string $dateTo = null): array
+    public function getAllGoodsReport(?string $dateFrom = null, ?string $dateTo = null): array
     {
-        $cacheKey = $this->buildCacheKey('campaigns', 'all', $dateFrom, $dateTo);
-        $cached = $this->getFromCache($cacheKey);
+        $cacheKey = $this->buildCacheKey('goods', 'all', $dateFrom, $dateTo);
+        $cached   = $this->getFromCache($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
 
-        $campaignsStats = $this->campaignStatsRepository->getAllCampaignsStats($dateFrom, $dateTo);
+        $goodsStats = $this->goodStatsRepository->getAllGoodsStats($dateFrom, $dateTo);
 
-        $totalClicks = 0;
-        $totalImpressions = 0;
-        $totalUniqueUsers = 0;
-
-        $campaigns = [];
-        foreach ($campaignsStats as $stat) {
-            $ctr = $stat['impressions'] > 0 ? round($stat['clicks'] / $stat['impressions'], 4) : 0.0;
-
-            $campaigns[] = [
-                'campaign_id' => $stat['campaign_id'],
-                'clicks' => $stat['clicks'],
-                'impressions' => $stat['impressions'],
-                'unique_users' => $stat['unique_users'],
-                'ctr' => $ctr,
-            ];
-
-            $totalClicks += $stat['clicks'];
-            $totalImpressions += $stat['impressions'];
-            $totalUniqueUsers = max($totalUniqueUsers, $stat['unique_users']);
+        $total = ['good_views' => 0, 'contact_reveals' => 0, 'profile_views' => 0, 'message_sends' => 0];
+        foreach ($goodsStats as $stat) {
+            $total['good_views']      += $stat['good_views'];
+            $total['contact_reveals'] += $stat['contact_reveals'];
+            $total['profile_views']   += $stat['profile_views'];
+            $total['message_sends']   += $stat['message_sends'];
         }
 
         $report = [
-            'period' => [
-                'from' => $dateFrom,
-                'to' => $dateTo,
-            ],
-            'campaigns' => $campaigns,
-            'total' => [
-                'clicks' => $totalClicks,
-                'impressions' => $totalImpressions,
-                'unique_users' => $totalUniqueUsers,
-            ],
+            'period' => ['from' => $dateFrom, 'to' => $dateTo],
+            'goods'  => $goodsStats,
+            'total'  => $total,
         ];
 
         $this->setCache($cacheKey, $report);
@@ -131,28 +96,23 @@ readonly class ReportsService
     }
 
     /**
-     * Gets daily report with caching
+     * Возвращает суточный отчёт активности с кешированием.
      *
-     * @param string|null $dateFrom Start date in Y-m-d format
-     * @param string|null $dateTo End date in Y-m-d format
-     * @return array{period: array{from: string|null, to: string|null}, daily: array<int, array{date: string, total_events: int, clicks: int, impressions: int}>}
+     * @param string|null $dateFrom Начальная дата в формате Y-m-d
+     * @param string|null $dateTo   Конечная дата в формате Y-m-d
+     * @return array{period: array{from: string|null, to: string|null}, daily: array<int, array{date: string, total_events: int, good_views: int, contact_reveals: int, profile_views: int, message_sends: int}>} Суточный отчёт
      */
     public function getDailyReport(?string $dateFrom = null, ?string $dateTo = null): array
     {
         $cacheKey = $this->buildCacheKey('daily', 'all', $dateFrom, $dateTo);
-        $cached = $this->getFromCache($cacheKey);
+        $cached   = $this->getFromCache($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
 
-        $dailyStats = $this->eventsRepository->getDailyStats($dateFrom, $dateTo);
-
         $report = [
-            'period' => [
-                'from' => $dateFrom,
-                'to' => $dateTo,
-            ],
-            'daily' => $dailyStats,
+            'period' => ['from' => $dateFrom, 'to' => $dateTo],
+            'daily'  => $this->eventsRepository->getDailyStats($dateFrom, $dateTo),
         ];
 
         $this->setCache($cacheKey, $report);
@@ -160,13 +120,39 @@ readonly class ReportsService
     }
 
     /**
-     * Builds cache key for report
+     * Возвращает гео-отчёт: топ стран и городов по событиям.
      *
-     * @param string $type Report type
-     * @param string $id Identifier
-     * @param string|null $dateFrom Start date
-     * @param string|null $dateTo End date
-     * @return string
+     * @param string|null $dateFrom Начальная дата в формате Y-m-d
+     * @param string|null $dateTo   Конечная дата в формате Y-m-d
+     * @param string|null $action   Фильтр по типу действия
+     * @return array{period: array{from: string|null, to: string|null}, action: string|null, geo: array<int, array{country: string|null, city: string|null, events: int}>} Гео-разбивка
+     */
+    public function getGeoReport(?string $dateFrom = null, ?string $dateTo = null, ?string $action = null): array
+    {
+        $cacheKey = $this->buildCacheKey('geo', $action ?? 'all', $dateFrom, $dateTo);
+        $cached   = $this->getFromCache($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $report = [
+            'period' => ['from' => $dateFrom, 'to' => $dateTo],
+            'action' => $action,
+            'geo'    => $this->eventsRepository->getGeoStats($dateFrom, $dateTo, $action),
+        ];
+
+        $this->setCache($cacheKey, $report);
+        return $report;
+    }
+
+    /**
+     * Формирует ключ кеша для отчёта.
+     *
+     * @param string      $type     Тип отчёта
+     * @param string      $id       Идентификатор
+     * @param string|null $dateFrom Начальная дата
+     * @param string|null $dateTo   Конечная дата
+     * @return string Ключ кеша
      */
     private function buildCacheKey(string $type, string $id, ?string $dateFrom, ?string $dateTo): string
     {
@@ -181,10 +167,10 @@ readonly class ReportsService
     }
 
     /**
-     * Gets data from cache
+     * Получает данные из кеша Redis.
      *
-     * @param string $key Cache key
-     * @return array<string, mixed>|null
+     * @param string $key Ключ кеша
+     * @return array<string, mixed>|null Данные или null если не найдено
      */
     private function getFromCache(string $key): ?array
     {
@@ -193,7 +179,6 @@ readonly class ReportsService
             if ($cached === false) {
                 return null;
             }
-
             $decoded = json_decode($cached, true);
             return is_array($decoded) ? $decoded : null;
         } catch (\Throwable) {
@@ -202,10 +187,10 @@ readonly class ReportsService
     }
 
     /**
-     * Sets data to cache
+     * Сохраняет данные в кеш Redis.
      *
-     * @param string $key Cache key
-     * @param array<string, mixed> $data Data to cache
+     * @param string               $key  Ключ кеша
+     * @param array<string, mixed> $data Данные для кеширования
      */
     private function setCache(string $key, array $data): void
     {
@@ -213,8 +198,7 @@ readonly class ReportsService
             $encoded = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $this->redis->setex($key, $this->cacheTtl, $encoded);
         } catch (\Throwable) {
-            // Silently fail if cache is unavailable
+            // Не прерываем работу при недоступности кеша
         }
     }
 }
-

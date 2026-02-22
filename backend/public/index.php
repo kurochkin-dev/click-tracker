@@ -21,8 +21,9 @@ $app->get('/health', [HealthController::class, 'health']);
 $app->post('/v1/events', [EventsController::class, 'ingest']);
 
 // Reports endpoints
-$app->get('/v1/reports/campaigns/{campaignId}', [ReportsController::class, 'campaign']);
-$app->get('/v1/reports/campaigns', [ReportsController::class, 'campaigns']);
+$app->get('/v1/reports/goods/{goodId}', [ReportsController::class, 'good']);
+$app->get('/v1/reports/goods', [ReportsController::class, 'goods']);
 $app->get('/v1/reports/daily', [ReportsController::class, 'daily']);
+$app->get('/v1/reports/geo', [ReportsController::class, 'geo']);
 
 $app->run();

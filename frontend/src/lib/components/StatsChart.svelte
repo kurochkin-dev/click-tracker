@@ -46,9 +46,11 @@
       chart.destroy();
     }
 
-    const labels = data.map((d) => d.date);
-    const clicksData = data.map((d) => d.clicks);
-    const impressionsData = data.map((d) => d.impressions);
+    const labels           = data.map((d) => d.date);
+    const goodViewsData    = data.map((d) => d.good_views);
+    const contactRevealsData = data.map((d) => d.contact_reveals);
+    const profileViewsData = data.map((d) => d.profile_views);
+    const messageSendsData = data.map((d) => d.message_sends);
 
     chart = new Chart(canvas, {
       type,
@@ -56,18 +58,32 @@
         labels,
         datasets: [
           {
-            label: 'Clicks',
-            data: clicksData,
+            label: 'Просмотры товаров',
+            data: goodViewsData,
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.1
+            tension: 0.3
           },
           {
-            label: 'Impressions',
-            data: impressionsData,
+            label: 'Раскрытия контактов',
+            data: contactRevealsData,
+            borderColor: 'rgb(217, 119, 6)',
+            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+            tension: 0.3
+          },
+          {
+            label: 'Просмотры профиля',
+            data: profileViewsData,
             borderColor: 'rgb(16, 185, 129)',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            tension: 0.1
+            tension: 0.3
+          },
+          {
+            label: 'Сообщения',
+            data: messageSendsData,
+            borderColor: 'rgb(139, 92, 246)',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            tension: 0.3
           }
         ]
       },
